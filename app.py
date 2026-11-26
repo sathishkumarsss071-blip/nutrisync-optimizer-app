@@ -19,16 +19,16 @@ st.markdown("---")
 # 2. Staple Ingredient Database (Per 100g / Standard Serving)
 # ---------------------------------------------------------
 STAPLE_DATA = [
-    {"Ingredient": "Rolled Oats", "Aisle": "Grains & Cereals", "Dietary": "Veg", "Calories": 389, "Protein_g": 16.9, "Cost_INR": 18, "Max_Servings": 2.5},
-    {"Ingredient": "Chicken Breast", "Aisle": "Lean Proteins", "Dietary": "Non-Veg", "Calories": 165, "Protein_g": 31.0, "Cost_INR": 32, "Max_Servings": 3.5},
-    {"Ingredient": "Soya Chunks", "Aisle": "Lean Proteins", "Dietary": "Veg", "Calories": 345, "Protein_g": 52.0, "Cost_INR": 16, "Max_Servings": 1.5},
-    {"Ingredient": "Whole Eggs (2 units)", "Aisle": "Dairy & Eggs", "Dietary": "Non-Veg", "Calories": 143, "Protein_g": 12.6, "Cost_INR": 14, "Max_Servings": 2.5},
-    {"Ingredient": "Paneer (Low Fat)", "Aisle": "Dairy & Eggs", "Dietary": "Veg", "Calories": 265, "Protein_g": 18.3, "Cost_INR": 38, "Max_Servings": 2.0},
-    {"Ingredient": "Brown Rice & Toor Dal", "Aisle": "Grains & Pulses", "Dietary": "Veg", "Calories": 350, "Protein_g": 14.2, "Cost_INR": 12, "Max_Servings": 3.0},
-    {"Ingredient": "Greek Yogurt / Curd", "Aisle": "Dairy & Eggs", "Dietary": "Veg", "Calories": 97, "Protein_g": 9.0, "Cost_INR": 20, "Max_Servings": 2.5},
-    {"Ingredient": "Spinach & Broccoli", "Aisle": "Fresh Produce", "Dietary": "Veg", "Calories": 34, "Protein_g": 2.8, "Cost_INR": 10, "Max_Servings": 3.0},
-    {"Ingredient": "Roasted Peanuts", "Aisle": "Nuts & Seeds", "Dietary": "Veg", "Calories": 567, "Protein_g": 25.8, "Cost_INR": 22, "Max_Servings": 0.8},
-    {"Ingredient": "Banana", "Aisle": "Fresh Produce", "Dietary": "Veg", "Calories": 89, "Protein_g": 1.1, "Cost_INR": 8, "Max_Servings": 2.0},
+    {"Ingredient": "Rolled Oats", "Aisle": "Grains & Cereals", "Dietary": "Veg", "Calories": 389.0, "Protein_g": 16.9, "Cost_INR": 18.0, "Max_Servings": 2.5},
+    {"Ingredient": "Chicken Breast", "Aisle": "Lean Proteins", "Dietary": "Non-Veg", "Calories": 165.0, "Protein_g": 31.0, "Cost_INR": 32.0, "Max_Servings": 3.5},
+    {"Ingredient": "Soya Chunks", "Aisle": "Lean Proteins", "Dietary": "Veg", "Calories": 345.0, "Protein_g": 52.0, "Cost_INR": 16.0, "Max_Servings": 1.5},
+    {"Ingredient": "Whole Eggs (2 units)", "Aisle": "Dairy & Eggs", "Dietary": "Non-Veg", "Calories": 143.0, "Protein_g": 12.6, "Cost_INR": 14.0, "Max_Servings": 2.5},
+    {"Ingredient": "Paneer (Low Fat)", "Aisle": "Dairy & Eggs", "Dietary": "Veg", "Calories": 265.0, "Protein_g": 18.3, "Cost_INR": 38.0, "Max_Servings": 2.0},
+    {"Ingredient": "Brown Rice & Toor Dal", "Aisle": "Grains & Pulses", "Dietary": "Veg", "Calories": 350.0, "Protein_g": 14.2, "Cost_INR": 12.0, "Max_Servings": 3.0},
+    {"Ingredient": "Greek Yogurt / Curd", "Aisle": "Dairy & Eggs", "Dietary": "Veg", "Calories": 97.0, "Protein_g": 9.0, "Cost_INR": 20.0, "Max_Servings": 2.5},
+    {"Ingredient": "Spinach & Broccoli", "Aisle": "Fresh Produce", "Dietary": "Veg", "Calories": 34.0, "Protein_g": 2.8, "Cost_INR": 10.0, "Max_Servings": 3.0},
+    {"Ingredient": "Roasted Peanuts", "Aisle": "Nuts & Seeds", "Dietary": "Veg", "Calories": 567.0, "Protein_g": 25.8, "Cost_INR": 22.0, "Max_Servings": 0.8},
+    {"Ingredient": "Banana", "Aisle": "Fresh Produce", "Dietary": "Veg", "Calories": 89.0, "Protein_g": 1.1, "Cost_INR": 8.0, "Max_Servings": 2.0},
 ]
 
 df_all = pd.DataFrame(STAPLE_DATA)
@@ -67,21 +67,21 @@ def solve_meal_plan(pantry_df: pd.DataFrame, cal_goal: float, prot_goal: float, 
 
     model = pulp.LpProblem("NutriSync_Optimizer", pulp.LpMinimize)
 
-    # Decision Variables: Daily servings (in 100g units)
+    # Decision Variables: Cast bounds to native Python float for PuLP 3.x compatibility
     qty = {
-        i: pulp.LpVariable(f"qty_{i}", lowBound=0, upBound=pantry_df.loc[i, "Max_Servings"])
+        i: pulp.LpVariable(f"qty_{i}", lowBound=0.0, upBound=float(pantry_df.loc[i, "Max_Servings"]))
         for i in pantry_df.index
     }
 
     # Objective Function: Minimize daily ingredient cost
-    model += pulp.lpSum(pantry_df.loc[i, "Cost_INR"] * qty[i] for i in pantry_df.index), "Minimize_Daily_Cost"
+    model += pulp.lpSum(float(pantry_df.loc[i, "Cost_INR"]) * qty[i] for i in pantry_df.index), "Minimize_Daily_Cost"
 
     # Constraint 1: Daily Calories within ±3% of target
-    model += pulp.lpSum(pantry_df.loc[i, "Calories"] * qty[i] for i in pantry_df.index) >= cal_goal * 0.97, "Min_Calories"
-    model += pulp.lpSum(pantry_df.loc[i, "Calories"] * qty[i] for i in pantry_df.index) <= cal_goal * 1.03, "Max_Calories"
+    model += pulp.lpSum(float(pantry_df.loc[i, "Calories"]) * qty[i] for i in pantry_df.index) >= float(cal_goal) * 0.97, "Min_Calories"
+    model += pulp.lpSum(float(pantry_df.loc[i, "Calories"]) * qty[i] for i in pantry_df.index) <= float(cal_goal) * 1.03, "Max_Calories"
 
     # Constraint 2: Daily Protein >= Target
-    model += pulp.lpSum(pantry_df.loc[i, "Protein_g"] * qty[i] for i in pantry_df.index) >= prot_goal, "Min_Protein"
+    model += pulp.lpSum(float(pantry_df.loc[i, "Protein_g"]) * qty[i] for i in pantry_df.index) >= float(prot_goal), "Min_Protein"
 
     # Constraint 3: Minimum Fresh Produce for Micronutrients (at least 100g/day)
     produce_idx = pantry_df[pantry_df["Aisle"] == "Fresh Produce"].index
@@ -104,9 +104,13 @@ def solve_meal_plan(pantry_df: pd.DataFrame, cal_goal: float, prot_goal: float, 
     for i in pantry_df.index:
         daily_units = qty[i].varValue
         if daily_units and daily_units > 0.05:  # Filter negligible traces (< 5g)
-            exact_cal += daily_units * pantry_df.loc[i, "Calories"]
-            exact_prot += daily_units * pantry_df.loc[i, "Protein_g"]
-            exact_daily_cost += daily_units * pantry_df.loc[i, "Cost_INR"]
+            cal_val = float(pantry_df.loc[i, "Calories"])
+            prot_val = float(pantry_df.loc[i, "Protein_g"])
+            cost_val = float(pantry_df.loc[i, "Cost_INR"])
+
+            exact_cal += daily_units * cal_val
+            exact_prot += daily_units * prot_val
+            exact_daily_cost += daily_units * cost_val
 
             daily_grams = round(daily_units * 100, 1)
             weekly_grams = round(daily_grams * horizon_days, 1)
@@ -116,9 +120,9 @@ def solve_meal_plan(pantry_df: pd.DataFrame, cal_goal: float, prot_goal: float, 
                 "Daily_Qty_g": daily_grams,
                 f"{horizon_days}_Day_Qty_g": weekly_grams,
                 f"{horizon_days}_Day_Qty_kg": round(weekly_grams / 1000, 2),
-                "Daily_Calories": round(daily_units * pantry_df.loc[i, "Calories"], 1),
-                "Daily_Protein_g": round(daily_units * pantry_df.loc[i, "Protein_g"], 1),
-                f"{horizon_days}_Day_Cost_INR": round(daily_units * pantry_df.loc[i, "Cost_INR"] * horizon_days, 2),
+                "Daily_Calories": round(daily_units * cal_val, 1),
+                "Daily_Protein_g": round(daily_units * prot_val, 1),
+                f"{horizon_days}_Day_Cost_INR": round(daily_units * cost_val * horizon_days, 2),
             })
 
     if not results:
